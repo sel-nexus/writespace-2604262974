@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -49,13 +49,36 @@ describe('post authoring', () => {
     expect(localStorage.getItem('writespace_posts')).toBeNull();
   });
 
+  it('rejects whitespace-only title and content', async () => {
+    const user = userEvent.setup();
+    renderAuthoring('/write');
+    await user.type(screen.getByLabelText('Title'), '   ');
+    await user.type(screen.getByLabelText('Content'), '   ');
+    await user.click(screen.getByRole('button', { name: 'Save Post' }));
+    expect(screen.getByText('Title is required.')).toBeInTheDocument();
+    expect(screen.getByText('Content is required.')).toBeInTheDocument();
+    expect(localStorage.getItem('writespace_posts')).toBeNull();
+  });
+
+  it('preserves large content and markup-like text as literal post content', async () => {
+    const user = userEvent.setup();
+    const longContent = `<script>alert(1)</script>${'A'.repeat(12000)}`;
+    renderAuthoring('/write');
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Long note' } });
+    fireEvent.change(screen.getByLabelText('Content'), { target: { value: longContent } });
+    await user.click(screen.getByRole('button', { name: 'Save Post' }));
+    expect(await screen.findByRole('heading', { name: 'Post reader' })).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem('writespace_posts'))[0].content).toBe(longContent);
+    expect(document.querySelector('script')).toBeNull();
+  });
+
   it('creates a post with generated identity, timestamp, and session author', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('crypto', { randomUUID: () => 'generated-post-id' });
     vi.setSystemTime(new Date('2025-03-04T12:30:00.000Z'));
     renderAuthoring('/write');
-    await user.type(screen.getByLabelText('Title'), '  A small idea  ');
-    await user.type(screen.getByLabelText('Content'), 'A thought worth sharing.');
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: '  A small idea  ' } });
+    fireEvent.change(screen.getByLabelText('Content'), { target: { value: 'A thought worth sharing.' } });
     expect(screen.getByRole('status')).toHaveTextContent('24 characters');
     await user.click(screen.getByRole('button', { name: 'Save Post' }));
     expect(await screen.findByRole('heading', { name: 'Post reader' })).toBeInTheDocument();
@@ -70,10 +93,8 @@ describe('post authoring', () => {
     renderAuthoring('/edit/own-post');
     expect(screen.getByLabelText('Title')).toHaveValue('First draft');
     expect(screen.getByLabelText('Content')).toHaveValue('Original words');
-    await user.clear(screen.getByLabelText('Title'));
-    await user.type(screen.getByLabelText('Title'), 'Revised draft');
-    await user.clear(screen.getByLabelText('Content'));
-    await user.type(screen.getByLabelText('Content'), 'Updated words');
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Revised draft' } });
+    fireEvent.change(screen.getByLabelText('Content'), { target: { value: 'Updated words' } });
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
     expect(JSON.parse(localStorage.getItem('writespace_posts'))).toEqual([{ ...ownPost, title: 'Revised draft', content: 'Updated words' }]);
   });
@@ -90,8 +111,7 @@ describe('post authoring', () => {
     savePosts([otherPost]);
     renderAuthoring('/edit/other-post', admin);
     expect(screen.getByLabelText('Title')).toHaveValue('Another draft');
-    await user.clear(screen.getByLabelText('Title'));
-    await user.type(screen.getByLabelText('Title'), 'Admin revision');
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Admin revision' } });
     await user.click(screen.getByRole('button', { name: 'Save Changes' }));
     expect(JSON.parse(localStorage.getItem('writespace_posts'))[0]).toMatchObject({ id: 'other-post', title: 'Admin revision', authorId: 'writer-2' });
   });
@@ -110,8 +130,8 @@ describe('post authoring', () => {
   it('shows a storage error and keeps the form when saving fails', async () => {
     const user = userEvent.setup();
     renderAuthoring('/write');
-    await user.type(screen.getByLabelText('Title'), 'A title');
-    await user.type(screen.getByLabelText('Content'), 'Some content');
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'A title' } });
+    fireEvent.change(screen.getByLabelText('Content'), { target: { value: 'Some content' } });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
     await user.click(screen.getByRole('button', { name: 'Save Post' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Your browser could not save this post.');

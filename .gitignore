@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+frontend/test-results/
 coverage/
 .env
 .env.local

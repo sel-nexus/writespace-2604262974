@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -18,7 +19,8 @@ function formatDate(value) {
 export default function AdminDashboard() {
   const session = getSession();
   if (session?.role !== 'admin') return <Navigate replace to={session ? '/blogs' : '/login'} />;
-  const posts = getPosts().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const [posts, setPosts] = useState(() => getPosts().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+  const [storageError, setStorageError] = useState('');
   const users = getUsers();
   const stats = [
     { label: 'Total Posts', value: posts.length, tone: 'indigo' },
@@ -28,8 +30,13 @@ export default function AdminDashboard() {
   ];
   const deletePost = (post) => {
     if (!window.confirm(`Delete “${post.title}”? This cannot be undone.`)) return;
-    savePosts(posts.filter((item) => item.id !== post.id));
-    window.location.reload();
+    const nextPosts = posts.filter((item) => item.id !== post.id);
+    if (!savePosts(nextPosts)) {
+      setStorageError('Your browser could not save this change. Check available storage and try again.');
+      return;
+    }
+    setStorageError('');
+    setPosts(nextPosts);
   };
 
   return (
@@ -58,6 +65,7 @@ export default function AdminDashboard() {
             </div>
             <Link className="font-semibold text-indigo-700 underline decoration-indigo-200 underline-offset-4" to="/blogs">View all posts</Link>
           </div>
+          {storageError && <p className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">{storageError}</p>}
           {posts.length ? (
             <div className="mt-6 divide-y divide-slate-100">
               {posts.slice(0, 5).map((post) => (

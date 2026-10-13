@@ -1,14 +1,19 @@
 import { expect, test } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+});
+
 test('writer creates, edits, cancels, and reloads a post', async ({ page }) => {
   const browserErrors = [];
   page.on('console', (message) => { if (message.type() === 'error') browserErrors.push(message.text()); });
   page.on('pageerror', (error) => browserErrors.push(error.message));
   await page.goto('/');
-  await page.getByRole('link', { name: 'Get Started' }).click();
+  await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Get Started' }).click();
   await page.getByLabel('Display Name').fill('Mira Chen');
   await page.getByLabel('Username').fill('mira');
-  await page.getByLabel('Password').fill('local-pass');
+  await page.getByLabel('Password', { exact: true }).fill('local-pass');
   await page.getByLabel('Confirm Password').fill('local-pass');
   await page.getByRole('button', { name: 'Create Account' }).click();
   await expect(page).toHaveURL(/\/blogs$/);
@@ -19,7 +24,7 @@ test('writer creates, edits, cancels, and reloads a post', async ({ page }) => {
   await expect(page.getByText('Content is required.')).toBeVisible();
   await page.getByLabel('Title').fill('A small idea');
   await page.getByLabel('Content').fill('A thought worth sharing with the community.');
-  await expect(page.getByRole('status')).toHaveText('41 characters');
+  await expect(page.getByRole('status')).toHaveText('43 characters');
   await page.getByRole('button', { name: 'Save Post' }).click();
   await expect(page.getByRole('heading', { name: 'A small idea' })).toBeVisible();
   await expect(page.getByText('A thought worth sharing with the community.')).toBeVisible();

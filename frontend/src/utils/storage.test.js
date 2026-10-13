@@ -42,4 +42,18 @@ describe('local storage helpers', () => {
     expect(savePosts([{ id: 'p2' }])).toBe(false);
     expect(saveSession({ role: 'user' })).toBe(false);
   });
+
+  it('normalizes non-array writes to empty arrays', () => {
+    expect(savePosts({ id: 'not-an-array' })).toBe(true);
+    expect(saveUsers('not-an-array')).toBe(true);
+    expect(getPosts()).toEqual([]);
+    expect(getUsers()).toEqual([]);
+  });
+
+  it('returns false when clearing a session fails', () => {
+    localStorage.setItem('writespace_session', JSON.stringify({ userId: 'u1', role: 'user' }));
+    vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => { throw new Error('blocked'); });
+    expect(clearSession()).toBe(false);
+    expect(getSession()).toMatchObject({ userId: 'u1', role: 'user' });
+  });
 });

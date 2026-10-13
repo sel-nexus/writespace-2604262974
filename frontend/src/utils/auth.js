@@ -30,7 +30,7 @@ export function login(username, password) {
   }
   const account = username === ADMIN.username && password === ADMIN.password
     ? ADMIN
-    : getUsers().find((user) => user.username === username && user.password === password);
+    : getUsers().find((user) => user && typeof user.id === 'string' && typeof user.username === 'string' && typeof user.password === 'string' && typeof user.displayName === 'string' && (user.role === 'user' || user.role === 'admin') && user.username === username && user.password === password);
   if (!account) return { ok: false, error: 'Invalid username or password.' };
 
   const session = {
@@ -55,7 +55,7 @@ export function register(input) {
   }
   if (password !== confirmPassword) return { ok: false, error: 'Passwords do not match.' };
   const normalizedUsername = username.trim();
-  if (normalizedUsername.toLowerCase() === ADMIN.username || getUsers().some((user) => user.username.toLowerCase() === normalizedUsername.toLowerCase())) {
+  if (normalizedUsername.toLowerCase() === ADMIN.username || getUsers().some((user) => user && typeof user.username === 'string' && user.username.toLowerCase() === normalizedUsername.toLowerCase())) {
     return { ok: false, error: 'That username is already taken.' };
   }
 

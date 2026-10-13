@@ -76,6 +76,17 @@ describe('administrator dashboard and account management', () => {
     expect(screen.getByText('No posts yet. Write the first one to get started.')).toBeInTheDocument();
   });
 
+  it('keeps a dashboard post and reports an error when deletion cannot be saved', async () => {
+    const user = userEvent.setup();
+    savePosts([posts[0]]);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderAdmin('/admin');
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your browser could not save this change.');
+    expect(screen.getByText('Post 1')).toBeInTheDocument();
+  });
+
   it('validates required fields and duplicate usernames before creating an account', async () => {
     const user = userEvent.setup();
     saveUsers(users);
@@ -104,8 +115,8 @@ describe('administrator dashboard and account management', () => {
     expect(JSON.parse(localStorage.getItem('writespace_users'))).toEqual([
       { id: 'created-admin-id', displayName: 'Ari Kim', username: 'ari', password: 'local-pass', role: 'admin', createdAt: expect.any(String) },
     ]);
-    expect(screen.getByText('Ari Kim')).toBeInTheDocument();
-    expect(screen.getAllByText('Admin', { selector: 'span' })).toHaveLength(2);
+    expect(screen.getAllByText('Ari Kim')).toHaveLength(2);
+    expect(screen.getAllByText('Admin', { selector: 'span' })).toHaveLength(4);
   });
 
   it('disables default-admin and current-account deletion and confirms other deletions', async () => {
@@ -116,8 +127,9 @@ describe('administrator dashboard and account management', () => {
     saveUsers([...users, removableUser]);
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     renderAdmin('/users', registeredAdmin);
-    expect(screen.getByRole('button', { name: 'Default admin cannot be deleted.' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'You cannot delete your own account.' })).toBeDisabled();
+    const desktopTable = screen.getByRole('table');
+    expect(within(desktopTable).getByRole('button', { name: 'Default admin cannot be deleted.' })).toBeDisabled();
+    expect(within(desktopTable).getByRole('button', { name: 'You cannot delete your own account.' })).toBeDisabled();
     const ariRow = screen.getByRole('row', { name: /Ari Kim ari User/ });
     await user.click(within(ariRow).getByRole('button', { name: 'Delete Ari Kim' }));
     expect(confirm).toHaveBeenCalled();
@@ -126,6 +138,19 @@ describe('administrator dashboard and account management', () => {
     await user.click(within(ariRow).getByRole('button', { name: 'Delete Ari Kim' }));
     expect(JSON.parse(localStorage.getItem('writespace_users'))).toEqual(users);
     expect(screen.queryByText('Ari Kim')).not.toBeInTheDocument();
+  });
+
+  it('keeps an account and reports an error when deletion cannot be persisted', async () => {
+    const user = userEvent.setup();
+    const removableUser = { id: 'writer-3', displayName: 'Ari Kim', username: 'ari', password: 'local-pass', role: 'user', createdAt: '2024-02-03T00:00:00.000Z' };
+    saveUsers([removableUser]);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderAdmin('/users');
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
+    const ariRow = screen.getByRole('row', { name: /Ari Kim ari User/ });
+    await user.click(within(ariRow).getByRole('button', { name: 'Delete Ari Kim' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your browser could not save this change.');
+    expect(screen.getAllByText('Ari Kim')).toHaveLength(2);
   });
 
   it('reports storage failures when creating accounts', async () => {

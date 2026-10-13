@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import Navbar from '../components/Navbar.jsx';
 import UserRow from '../components/UserRow.jsx';
+import Avatar from '../components/Avatar.jsx';
 import { getSession, getUsers, saveUsers } from '../utils/storage.js';
 
 /** Render administrator account creation and deletion controls.
@@ -109,7 +110,26 @@ export default function UserManagement() {
             </div>
           </div>
           {users.length ? (
-            <div className="mt-5 overflow-x-auto">
+            <>
+              <div className="mt-5 space-y-3 md:hidden">
+                {[{ id: 'writespace-default-admin', displayName: 'WriteSpace Admin', username: 'admin', role: 'admin', createdAt: '2024-01-01T00:00:00.000Z' }, ...users].map((user) => (
+                  <article className="rounded-2xl border border-slate-100 bg-white p-4" key={`mobile-${user.id}`}>
+                    <div className="flex items-center gap-3">
+                      <Avatar label={`${user.displayName} avatar`} role={user.role} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-slate-800">{user.displayName}</p>
+                        <p className="truncate text-sm text-slate-500">{user.username}</p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${user.role === 'admin' ? 'bg-violet-100 text-violet-800' : 'bg-indigo-100 text-indigo-800'}`}>{user.role === 'admin' ? 'Admin' : 'User'}</span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                      <span className="text-sm text-slate-500">{new Intl.DateTimeFormat('en', { month: 'short', day: '2-digit', year: 'numeric' }).format(new Date(user.createdAt))}</span>
+                      <button aria-label={user.id === 'writespace-default-admin' ? 'Default admin cannot be deleted.' : user.id === session.userId ? 'You cannot delete your own account.' : `Delete ${user.displayName}`} className="rounded-full bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={user.id === 'writespace-default-admin' || user.id === session.userId} onClick={() => deleteUser(user)} title={user.id === 'writespace-default-admin' ? 'Default admin cannot be deleted.' : user.id === session.userId ? 'You cannot delete your own account.' : undefined} type="button">Delete</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="mt-5 hidden overflow-x-auto md:block">
               <table className="w-full min-w-[680px] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
@@ -125,7 +145,8 @@ export default function UserManagement() {
                   {users.map((user) => <UserRow currentUserId={session.userId} key={user.id} onDelete={deleteUser} user={user} />)}
                 </tbody>
               </table>
-            </div>
+              </div>
+            </>
           ) : (
             <p className="mt-5 rounded-2xl border border-dashed border-slate-300 px-5 py-10 text-center text-slate-600">No registered accounts yet. Create the first account above.</p>
           )}

@@ -90,6 +90,17 @@ describe('authenticated blog reading', () => {
     rerender(<div />);
   });
 
+  it('keeps the post and reports an error when deletion cannot be persisted', async () => {
+    const user = userEvent.setup();
+    savePosts([posts[1]]);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderApp('/blog/newer', admin);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your browser could not save this change.');
+    expect(JSON.parse(localStorage.getItem('writespace_posts'))).toEqual([posts[1]]);
+  });
+
   it('shows a missing-post state for an unknown ID', () => {
     renderApp('/blog/missing');
     expect(screen.getByRole('heading', { name: 'Post not found' })).toBeInTheDocument();

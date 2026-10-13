@@ -42,6 +42,16 @@ describe('local demo authentication', () => {
     expect(register({ displayName: 'Other', username: 'WRITER', password: 'x', confirmPassword: 'x' }).error).toBe('That username is already taken.');
   });
 
+  it('does not authenticate malformed stored user records', () => {
+    localStorage.setItem('writespace_users', JSON.stringify([null, { username: 'writer' }, { username: 'writer', password: 'secret' }]));
+    expect(login('writer', 'secret')).toEqual({ ok: false, error: 'Invalid username or password.' });
+  });
+
+  it('reports login session persistence failures', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
+    expect(login('admin', 'admin')).toMatchObject({ ok: false, error: expect.stringContaining('Browser storage is unavailable') });
+  });
+
   it('does not leave a registered account behind when session persistence fails', () => {
     const originalSetItem = Storage.prototype.setItem;
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(key, value) {
