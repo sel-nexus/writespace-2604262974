@@ -6,6 +6,8 @@ import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Home from './pages/Home.jsx';
 import ReadBlog from './pages/ReadBlog.jsx';
 import WriteBlog from './pages/WriteBlog.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
+import UserManagement from './pages/UserManagement.jsx';
 
 /** Render the public and guest-entry routes for WriteSpace.
  * @returns {JSX.Element} Application route tree.
@@ -23,8 +25,8 @@ export default function App() {
         <Route element={<WriteBlog />} path="/edit/:id" />
       </Route>
       <Route element={<ProtectedRoute adminOnly />}>
-        <Route element={<Navigate replace to="/admin" />} path="/admin" />
-        <Route element={<Navigate replace to="/users" />} path="/users" />
+        <Route element={<AdminDashboard />} path="/admin" />
+        <Route element={<UserManagement />} path="/users" />
       </Route>
       <Route element={<Navigate replace to="/" />} path="*" />
     </Routes>
